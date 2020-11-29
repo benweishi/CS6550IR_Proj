@@ -48,3 +48,8 @@ model.fit(X_train, y_train, epochs=5, batch_size=batch_size, verbose=0)
 
 rst = model.predict(X_test)
 print(rst)
+with open("model_output", "w") as f:
+    for i in rst:
+        for v in i:
+            f.write(str(v))
+            f.write('\n')

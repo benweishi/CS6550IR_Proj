@@ -1,61 +1,69 @@
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
 from tensorflow import keras
 
-def input_fn(data_set):
+
+def input_fn(data_set, mean=None, std=None):
     labels = data_set['document_score'].values
-
-    FEATURES = ['document_count', 'mean_document_length', 'document_length', 'term_frequency_1', 'term_frequency_2',
+    FEATURES = ['mean_document_length', 'document_length', 'term_frequency_1', 'term_frequency_2',
                 'term_frequency_3', 'term_frequency_4', 'term_frequency_5', 'document_frequency_1',
-                'document_frequency_2',
-                'document_frequency_3', 'document_frequency_4', 'document_frequency_5']
+                'document_frequency_2','document_frequency_3', 'document_frequency_4', 'document_frequency_5']
+    feature_cols = data_set[FEATURES]
+    # Normalize
+    if mean is None:
+        mean = feature_cols.mean(axis=0)
+    if std is None:
+        std = feature_cols.std(axis=0)
+    feature_cols = ((feature_cols-mean)/std).to_numpy()
 
-    feature_cols = data_set[FEATURES].to_numpy()
+    return feature_cols, labels, mean, std
 
-    return feature_cols, labels
+print('Reading train data.')
+filename = 'data/dense_vect1.csv'
+df = pd.read_csv(filename)
+X_train, y_train, mean, std = input_fn(df)
 
-# read training data
-filename = 'query.titles.csv'
-training_input = './' + filename
-df = pd.read_csv(training_input)
+print('Reading test data.')
+filename = 'data/query.titles.csv'
+df = pd.read_csv(filename)
+X_test, y_test, _, _ = input_fn(df, mean, std)
 
-# get features and labels
-feature_cols, labels = input_fn(df)
-
-#need to change to real X_train, X_test!!
-sp_line = int(len(feature_cols)*0.8)
-
-X_train, y_train = feature_cols[:sp_line], labels[:sp_line]
-X_test, y_test = feature_cols[sp_line:], labels[sp_line:]
-
-# parameters
-input_size = len(feature_cols)
-batch_size = 512
-hidden_units = 1024
-dropout = 0.5
-learning_rate = 1e-3
-
-n_features = feature_cols.shape[1]
+n_features = X_train.shape[1]
 
 model = Sequential()
-model.add(Dense(hidden_units, activation='relu', input_shape=(n_features,)))
-model.add(Dropout(dropout))
-model.add(Dense(hidden_units, activation='relu'))
-model.add(Dropout(dropout))
+model.add(tf.keras.Input(shape=(n_features,)))
+model.add(tf.keras.layers.BatchNormalization())  # optional
+model.add(Dense(16, activation='relu', kernel_initializer='he_normal'))
+model.add(Dropout(0.5))
+model.add(Dense(8, activation='relu', kernel_initializer='glorot_uniform'))
+model.add(Dropout(0.5))
 model.add(Dense(1))
 
-opt = keras.optimizers.Adam(learning_rate=learning_rate)
+opt = keras.optimizers.Adam(learning_rate=1e-3)
 model.compile(optimizer=opt, loss='mse')
 
-model.fit(X_train, y_train, epochs=5, batch_size=batch_size, verbose=0)
+model.fit(X_train, y_train, epochs=2, batch_size=512, verbose=1, validation_split=0.2)
 
 rst = model.predict(X_test)
-print(rst)
-with open("model_output", "w") as f:
-    for i in rst:
-        for v in i:
-            f.write(str(v))
-            f.write('\n')
+print(rst, rst.max(), rst.min())
+
+# output, row format:
+# topic 'Q0' document_name rank dense_score 'dense_score'
+# example row:
+# 301 Q0 FBIS4-41991 1 8.130586624145508 dense_score
+df['dense_score'] = rst.flatten()
+df.sort_values(['topic','dense_score'], ascending=[True,False]).groupby('topic').head(1000)
+with open("results/score_dense.txt", "w") as f:
+    r = 1
+    topic = df.iloc[0].topic
+    for i in range(len(X_test)):
+        f.write(f'{df.iloc[i].topic} Q0 {df.iloc[i].document_name} {r} {df.iloc[i].dense_score} dense_score\n')
+        if topic != df.iloc[i].topic:
+            r = 1
+            topic = df.iloc[i].topic
+        else:
+            r += 1

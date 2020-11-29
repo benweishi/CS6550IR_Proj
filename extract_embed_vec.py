@@ -11,7 +11,7 @@ bm25_query_env = pyndri.OkapiQueryEnvironment(index, k1=1.2, b=0.75, k3=1000)
 
 model_filename = 'GoogleNews-vectors-negative300.bin'
 model = KeyedVectors.load_word2vec_format(model_filename, binary=True)
-print(model.wv['dog'], len(model.wv['dog']))
+#print(model.wv['dog'], len(model.wv['dog']))
 
 """
 doc_vec_dic = {}
@@ -55,17 +55,17 @@ with open("doc_vec") as f:
         doc_vec_dic[int(t[0])] = vec
 """
 
-print("doc processing done, start query processing")
+print("doc processing done, w2v model done, start query processing")
 
 f = open("query.titles.tsv", "r")
 training_queries = f.readlines()
 f.close()
-out = open("embed_vect1.csv", "w")
-headline = "topic,query,"
+out = open("/mnt/d/embed_test_vec.csv", "w")
+headline = "topic,query"
 for i in range(5):
     for j in range(300):
         headline += ",term%d_dim%d"%(i,j)
-headline = headline + "document_name,document_score"
+headline = headline + ",document_score,document_name"
 for i in range(5):
     for j in range(300):
         headline += ",doc_first%ddim%d"%(i,j)
@@ -77,13 +77,12 @@ for i in range(5):
 out.write(headline)
 out.write("\n")
 l = len(training_queries)
-for i in range(1):#len(training_queries)):
-    if i%100==0:
-        print(i)
+for i in range(len(training_queries)):
+    print(i)
     line =(training_queries[i].split('\n'))[0]
     topic = line.split('\t')[0]
     q = line.split('\t')[1]
-    query_doc_results = bm25_query_env.query(q, results_requested=1000)
+    query_doc_results = bm25_query_env.query(q, results_requested=2000)
     terms = []
     dfs = []
     term_vecs = []
@@ -106,7 +105,7 @@ for i in range(1):#len(training_queries)):
 
         for v in term_vecs:
             for i in v:
-                output_vec += ", %f"%(i)
+                output_vec += ",%f"%(i)
 
     for (doc_id, score) in query_doc_results:
         BM25_score = score
@@ -117,7 +116,9 @@ for i in range(1):#len(training_queries)):
             vec = [0 for i in range(300)]
             try:
                 term = id2tockens[terms_in_doc[i]]
+                #print(term)
                 vec = model.wv[term]
+                #print(vec)
             except:
                 pass
             first_5_vec.append(vec)
@@ -136,11 +137,12 @@ for i in range(1):#len(training_queries)):
         vect = vect + ',' + str(BM25_score) + ',' + doc_name
         for v in first_5_vec:
             for i in v:
-                vect += ", %f"%i
+                vect += ",%f"%i
         for v in last_5_vec:
             for i in v:
-                vect += ", %f"%i
+                vect += ",%f"%i
         vect += "\n"
+
         out.write(vect)
 
 out.close()

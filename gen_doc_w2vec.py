@@ -1,5 +1,6 @@
 import pyndri
 from gensim.models import KeyedVectors
+import time
 
 index = pyndri.Index("index")
 
@@ -13,11 +14,11 @@ model_filename = 'GoogleNews-vectors-negative300.bin'
 model = KeyedVectors.load_word2vec_format(model_filename, binary=True)
 #print(model.wv['dog'], len(model.wv['dog']))
 
-"""
 doc_vec_dic = {}
 for doc_id in range(index.document_base(), index.maximum_document()):
+    print(doc_id)
+    s = time.time()
     terms_in_doc =  index.document(doc_id)[1]
-    #print(len(terms_in_doc), terms_in_doc)
     doc_vec = [0 for i in range(300)]
 
     for term_id in terms_in_doc:
@@ -34,16 +35,18 @@ for doc_id in range(index.document_base(), index.maximum_document()):
             doc_vec[i] /= len(terms_in_doc)
 
     doc_vec_dic[doc_id] = doc_vec
-"""
-"""
+    e = time.time()
+    print("time:%s"%(e-s))
+
 with open("doc_vec", "w") as f:
     for doc_id in doc_vec_dic:
-        f.write(doc_id)
+        f.write(str(doc_id))
         for idx, i in enumerate(doc_vec_dic[doc_id]):
             f.write(" dim%d:%f"%(idx, i))
         f.write("\n")
+        
 
-
+"""
 with open("doc_vec") as f:
     lines = f.readlines()
     doc_vec_dic = {}
@@ -55,6 +58,8 @@ with open("doc_vec") as f:
         doc_vec_dic[int(t[0])] = vec
 """
 
+
+"""
 print("doc processing done, w2v model done, start query processing")
 
 f = open("query.titles.tsv", "r")
@@ -146,3 +151,4 @@ for i in range(len(training_queries)):
         out.write(vect)
 
 out.close()
+"""

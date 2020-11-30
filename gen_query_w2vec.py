@@ -2,7 +2,7 @@ import pyndri
 from gensim.models import KeyedVectors
 import time
 
-index = pyndri.Index("data/index")
+index = pyndri.Index("index")
 
 token2id, id2tockens, id2df = index.get_dictionary()
 del id2df
@@ -10,7 +10,7 @@ del id2df
 bm25_query_env = pyndri.OkapiQueryEnvironment(index, k1=1.2, b=0.75, k3=1000)
 
 
-model_filename = 'data/GoogleNews-vectors-negative300.bin'
+model_filename = 'GoogleNews-vectors-negative300.bin'
 model = KeyedVectors.load_word2vec_format(model_filename, binary=True)
 #print(model.wv['dog'], len(model.wv['dog']))
 

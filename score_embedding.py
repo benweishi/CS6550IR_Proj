@@ -6,48 +6,67 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
 from tensorflow import keras
 
-queryIDList = []
-with open('data/query.titles.tsv') as f:
-    for cnt, line in enumerate(f):
-        id = line.split('\t')[0]
-        queryIDList.append(id)
-
-n = len(queryIDList)
-d = 5
-embeddings = np.load('data/query_vectors.bin.npy')
-print(embeddings.shape)
-df = pd.DataFrame(data=embeddings, index=queryIDList)
+print('Reading training query embedding data.')
+with open('data/training_query_id.txt') as f:
+    train_queryIDList = f.readline().strip().split()
+n = len(train_queryIDList)
+train_query_embeddings = np.load('data/trainnig_query_vec.bin.npy')
+print(n)
+train_qe_data = pd.DataFrame(data=train_query_embeddings, index=train_queryIDList)
 # print(df)
 # print(df.loc[['302','305','302']])
 # print(df.loc[['302','305']].to_numpy())
-'''
-def input_fn(data_set, mean=None, std=None):
-    labels = data_set['document_score'].values
-    FEATURES = ['mean_document_length', 'document_length', 'term_frequency_1', 'term_frequency_2',
-                'term_frequency_3', 'term_frequency_4', 'term_frequency_5', 'document_frequency_1',
-                'document_frequency_2','document_frequency_3', 'document_frequency_4', 'document_frequency_5']
-    feature_cols = data_set[FEATURES]
+print('Reading test query embedding data.')
+with open('data/test_query_id.txt') as f:
+    test_queryIDList = f.readline().strip().split()
+test_query_embeddings = np.load('data/test_query_vectors.bin.npy')
+print(test_query_embeddings.shape)
+test_qe_data = pd.DataFrame(data=test_query_embeddings, index=test_queryIDList)
 
-    return feature_cols, labels
+print('Reading doc embedding data.')
+with open('test_query_id.txt') as f:
+    docIDList = f.readline().strip().split()
 
-print('Reading train data.')
-filename = 'data/dense_vect1.csv'
-df = pd.read_csv(filename)
-X_train, y_train = input_fn(df)
+doc_embeddings = np.load('data/doc_vec.bin.npy')
+print(doc_embeddings.shape)
+doce_data = pd.DataFrame(data=doc_embeddings, index=docIDList)
 
-print('Reading test data.')
-filename = 'data/query.titles.csv'
-df = pd.read_csv(filename)
-X_test, y_test = input_fn(df)
 
-n_features = X_train.shape[1]
+
+print('Reading training indexing data.')
+qd_index = np.load("data/q-doc_scoreIndex.bin.npy")
+qd_index_data= pd.DataFrame(qd_index, index=[qd_index[:,0],qd_index[:,1]])
+qd_index_data.columns = ["key_0","key_1","score"]
+merge_q_d_train = pd.merge(doce_data,train_qe_data,how="outer", on=[doce_data.index, test_qe_data.index])
+merge_qd_score_train =pd.merge(qd_index_data,merge_q_d_train, how = "inner", on=["key_0","key_1"])
+print(merge_qd_score_train.shape, "this value shouldn't be very small, please valid it")
+X_train = (merge_qd_score_train.drop(['key_0', 'key_1','score'], axis=1)).to_numpy()
+y_train = (merge_qd_score_train[['score']]).to_numpy()
+
+print('Reading test indexing data.')
+
+qd_index = np.load("data/q-doc_scoreIndex_test.bin.npy")
+qd__test_index_data = pd.DataFrame(qd_index, index=[qd_index[:,0],qd_index[:,1]])
+qd__test_index_data.columns = ["key_0","key_1","score"]
+merge_q_d_test = pd.merge(doce_data,test_qe_data,how="outer", on=[doce_data.index, test_qe_data.index])
+merge_qd_score_test =pd.merge(qd__test_index_data,merge_q_d_test, how = "inner", on=["key_0","key_1"])
+print(merge_qd_score_test.shape, "this value shouldn't be very small, please valid it")
+X_test = (merge_qd_score_test.drop(['key_0', 'key_1','score'], axis=1)).to_numpy()
+y_test = (merge_qd_score_test[['score']]).to_numpy()
+
+
+
+
+
+n_features = doc_embeddings.shape[1]
+print(n_features)
 
 model = Sequential()
 model.add(tf.keras.Input(shape=(n_features,)))
 # model.add(tf.keras.layers.BatchNormalization())  # optional
-model.add(Dense(16, activation='relu', kernel_initializer='he_normal'))
+model.add(Dense(300, activation='relu', kernel_initializer='he_normal'))
 model.add(Dropout(0.5))
-model.add(Dense(8, activation='relu', kernel_initializer='glorot_uniform'))
+model.add(Dense(100, activation='relu', kernel_initializer='glorot_uniform'))
 model.add(Dropout(0.5))
 model.add(Dense(1))
 
@@ -75,4 +94,5 @@ with open("results/score_dense.txt", "w") as f:
             topic = df.iloc[i].topic
         else:
             r += 1
-'''
+
+

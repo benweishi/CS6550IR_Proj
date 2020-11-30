@@ -1,23 +1,24 @@
 import pyndri
 from gensim.models import KeyedVectors
 import time
-
-index = pyndri.Index("data/index")
+import numpy as np
+index = pyndri.Index("index")
 
 token2id, id2tockens, id2df = index.get_dictionary()
 del id2df
 
 bm25_query_env = pyndri.OkapiQueryEnvironment(index, k1=1.2, b=0.75, k3=1000)
 
-model_filename = 'data/GoogleNews-vectors-negative300.bin'
+model_filename = 'GoogleNews-vectors-negative300.bin'
 model = KeyedVectors.load_word2vec_format(model_filename, binary=True)
 #print(model.wv['dog'], len(model.wv['dog']))
 
 doc_vec_dic = {}
+count = 0
 for doc_id in range(index.document_base(), index.maximum_document()):
-    print(doc_id)
     s = time.time()
     terms_in_doc =  index.document(doc_id)[1]
+    id_name = index.document(doc_id)[0]
     doc_vec = [0 for i in range(300)]
 
     for term_id in terms_in_doc:
@@ -33,16 +34,19 @@ for doc_id in range(index.document_base(), index.maximum_document()):
         for i in range(300):
             doc_vec[i] /= len(terms_in_doc)
 
-    doc_vec_dic[doc_id] = doc_vec
-    e = time.time()
-    print("time:%s"%(e-s))
-
-with open("doc_vec", "w") as f:
-    for doc_id in doc_vec_dic:
-        f.write(str(doc_id))
-        for idx, i in enumerate(doc_vec_dic[doc_id]):
-            f.write(" dim%d:%f"%(idx, i))
-        f.write("\n")
+    doc_vec_dic[id_name] = doc_vec
+    if count%1000 == 0:
+        e = time.time()
+        print("time:%s"%(e-s))
+    count +=1
+ids = []
+vecs = []
+for doc_id in doc_vec_dic:
+    ids.append(doc_id)
+    vecs.append(doc_vec_dic[doc_id])
+np.save("doc_vec.bin",np.asarray(vecs))
+with open("doc_id.txt","w") as f:
+    f.write(" ".join(ids))
 
 """
 with open("doc_vec") as f:

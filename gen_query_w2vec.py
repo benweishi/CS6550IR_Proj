@@ -33,16 +33,16 @@ training_queries = f.readlines()
 f.close()
 out = open("query_w2vec.csv", "w")
 headline = "topic,query"
-for i in range(5):
-    for j in range(300):
-        headline += ",term%d_dim%d"%(i,j)
+#for i in range(5):
+#    for j in range(300):
+#        headline += ",term%d_dim%d"%(i,j)
 for j in range(300):
     headline += ",avg_dim%d"%(j)
 
 out.write(headline)
 out.write("\n")
 l = len(training_queries)
-for i in range(len(training_queries)):
+for i in range(1):#len(training_queries)):
     print(i)
     s = time.time()
     line =(training_queries[i].split('\n'))[0]
@@ -74,7 +74,7 @@ for i in range(len(training_queries)):
         
     for v in term_vecs:
         for idx, i in enumerate(v):
-            output_vec += ",%f"%(i)
+    #        output_vec += ",%f"%(i)
             avg_vecs[idx] += i
     
     for i in range(len(avg_vecs)):
